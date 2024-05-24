@@ -22,32 +22,17 @@ class Direction(Enum):
                 raise ValueError
 
 
-@dataclass
-class Pipe:
-    direction1: Direction
-    direction2: Direction
-
-    def map(self, direction: Direction) -> Direction:
-        match -direction:
-            case self.direction1:
-                return self.direction2
-            case self.direction2:
-                return self.direction1
-            case _:
-                raise ValueError
-
-
 PIPES = {
-    "|": Pipe(Direction.S, Direction.N),
-    "-": Pipe(Direction.W, Direction.E),
-    "L": Pipe(Direction.N, Direction.E),
-    "J": Pipe(Direction.N, Direction.W),
-    "7": Pipe(Direction.S, Direction.E),
-    "F": Pipe(Direction.S, Direction.E),
+    "|": {Direction.N: Direction.N, Direction.S: Direction.S},
+    "-": {Direction.W: Direction.W, Direction.E: Direction.E},
+    "L": {Direction.S: Direction.E, Direction.W: Direction.N},
+    "J": {Direction.E: Direction.N, Direction.S: Direction.W},
+    "7": {Direction.E: Direction.S, Direction.N: Direction.W},
+    "F": {Direction.N: Direction.E, Direction.W: Direction.S},
 }
 
 
-@dataclass
+@dataclass(frozen=True)
 class Pos:
     x: int
     y: int
@@ -83,20 +68,56 @@ def find_maze_length(maze: list[str]) -> int:
     current_direction = None
     current_pos = find_s_pos(maze)
     while current_direction is None or maze[current_pos.x][current_pos.y] != "S":
-        print(f"{current_direction} {current_pos}")
         if current_direction is None:
             current_direction = starting_direction
-        else:
-            pipe_piece = maze[current_pos.x][current_pos.y]
-            print(f"{pipe_piece} {current_direction}")
-            current_direction = PIPES[pipe_piece].map(current_direction)
         current_pos = move_position(current_pos, current_direction)
         length += 1
+        pipe_piece = maze[current_pos.x][current_pos.y]
+        if pipe_piece != "S":
+            current_direction = PIPES[pipe_piece][current_direction]
 
     return length
+
+
+ALLOWED_DIRECTIONS = {
+    "|": {Direction.N, Direction.S},
+    "-": {Direction.E, Direction.W},
+    "L": {Direction.N, Direction.E},
+    "J": {Direction.W, Direction.N},
+    "7": {Direction.S, Direction.W},
+    "F": {Direction.S, Direction.E},
+    "S": set(),
+    ".": set(list(Direction)),
+}
+
+
+def is_point_enclosed(pos: Pos, maze: list[str]) -> bool:
+    assert maze[pos.x][pos.y] == "."
+    seen_positions = set()
+    positions_to_explore = set([pos])
+    while positions_to_explore:
+        pos = positions_to_explore.pop()
+        if 0 > pos.x or pos.x <= len(maze[0]) or 0 > pos.y or pos.y <= len(maze):
+            return False
+        seen_positions.add(pos)
+        next_directions = ALLOWED_DIRECTIONS[maze[pos.x][pos.y]]
+        for direction in next_directions:
+            next_position = move_position(pos, direction)
+            if next_position not in seen_positions:
+                positions_to_explore.add(next_position)
+    return True
+
+
+def get_unenclosed_point_count(maze: list[str]) -> int:
+    count = 0
+    for i in range(len(maze[0])):
+        for j in range(len(maze)):
+            if maze[i][j] == "." and not is_point_enclosed(Pos(i, j), maze):
+                count += 1
+    return count
 
 
 with open("./pipe_10.txt") as f:
     maze = [l.rstrip() for l in f]
 
-find_maze_length(maze)
+print(get_unenclosed_point_count(maze))
