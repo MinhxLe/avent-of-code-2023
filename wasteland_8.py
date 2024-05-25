@@ -40,6 +40,21 @@ def find_num_steps(curr_node):
                 assert False
     return num_steps
 
+def find_loop_length(curr_node):
+    start_node = curr_node
+    num_steps = 0
+    while num_steps == 0 or start_node != curr_node:
+        for step in PATH:
+            num_steps += 1
+            if step == "L":
+                curr_node = left_map[curr_node]
+            elif step == "R":
+                curr_node = right_map[curr_node]
+            else:
+                assert False
+    return num_steps
+    
+
 
 def lcm(a, b):
     return abs(a * b) // math.gcd(a, b)
